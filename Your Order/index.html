@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Order</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f6f6f6;
+            font-family: 'Poppins', sans-serif;
+
+        }
+
+        .main-container {
+            background-color: #ffffff;
+            width: 80%;
+            margin: 5% auto 15% auto;
+            border-radius: 10px;
+            box-shadow: 10px 10px 10px 5px #888;
+        }
+
+        h1 {
+            padding-top: 25px;
+            margin-bottom: 40px;
+        }
+
+        .form-container {
+            width: 80%;
+            margin: 5% auto 15% auto;
+
+        }
+
+        .input-div,
+        .location,
+        .address-input,
+        .sign {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .comments {
+            width: 100%;
+            font-family: 'poppins', sans-serif;
+            font-weight: 300;
+            font-size: 16px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            height: 25px;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            padding: 15px 15px;
+        }
+
+        .input-text input[type="email"] {
+            width: 100%;
+            height: 25px;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            padding: 15px 15px;
+        }
+
+        .address {
+            width: 100%;
+        }
+
+        .state {
+            width: 100%;
+            height: 25px;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            margin-right: 20px;
+            margin-left: 20px;
+            padding: 0px 15px 0px 15px;
+            height: 34px;
+            color: #6d767b;
+            background-color: #ffffff;
+        }
+
+        .zip {
+            padding-left: 40px;
+        }
+
+        .margin-right {
+            margin-right: 20px;
+        }
+
+        .sample span {
+            margin-right: 30px;
+        }
+
+        .sample input[type="checkbox"] {
+            margin-right: 5px;
+        }
+
+        p {
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 2.5rem;
+            margin-top: 5px
+        }
+
+        .team span {
+            margin-right: 30px;
+        }
+
+        .team input[type="radio"] {
+            margin-right: 5px;
+        }
+
+        .team {
+            margin-bottom: 25px;
+        }
+
+        .sign {
+            margin-top: 40px;
+            padding-bottom: 80px;
+            font-weight: 300;
+        }
+
+        .sign input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            margin-right: 3px;
+
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #475bbe;
+            color: #f6f5ff;
+            border: none;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-container">
+
+        <div class="form-container">
+            <h1>Your Order</h1>
+            <form action="get">
+                <div class="input-div">
+                    <div class="input-text margin-right address">
+                        <label><b>Name</b></label>
+                        <input type="text" placeholder="Your full name">
+                    </div>
+                    <div class="input-text address">
+                        <label><b>Email address</b></label>
+                        <input type="email" placeholder="chuck@roundhouse.com">
+                    </div>
+                </div>
+
+                <div class="">
+                    <label><b>Adderss</b></label>
+                    <div class="address-input">
+                        <div class="address margin-right">
+                            <input type="text" placeholder="9 Augusta Street">
+                        </div>
+                        <div class="address">
+                            <input type="text" placeholder="Suite 122">
+                        </div>
+                    </div>
+
+
+                </div>
+
+                <div class="location">
+                    <div class="city address">
+                        <label><b>city</b></label>
+                        <input type="text" placeholder="New Jersey">
+                    </div>
+
+                    <div class="address">
+                        <label><b style="
+                            padding-left: 21px;
+                        ">State</b></label>
+                        <select class="state">
+                            <option>New York</option>
+                            <option>California</option>
+                            <option>Washington DC</option>
+                        </select>
+                    </div>
+
+                    <div class="zip address">
+                        <label><b>Zip</b></label>
+                        <input type="text" placeholder="726221">
+                    </div>
+
+                </div>
+
+                <div class="sample">
+                    <p>What color samples should we send you?</p>
+                    <span><input type="checkbox" disabled>White</span>
+                    <span><input type="checkbox" checked>Magenta</span>
+                    <span><input type="checkbox">Coral</span>
+                    <span><input type="checkbox" checked>Burgundy</span>
+                    <span><input type="checkbox">Charcoal</span>
+                </div>
+                <div class="team">
+                    <p>How large is your team?</p>
+                    <input type="radio" name="team"><span>1-5 people</span>
+                    <input type="radio" name="team" checked><span>6-10 people</span>
+                    <input type="radio" name="team"><span>10+ people</span>
+                </div>
+                <div class="comments">
+                    <label>
+                        <p>Comments</p>
+                    </label>
+                    <textarea class="comments"
+                        rows="10">Please also send me one of your catalogs so i can show your products to other people in my industry.</textarea>
+                </div>
+                <div class="sign">
+                    <div><input type="checkbox">
+                        <span>sign up for special offers</span>
+                    </div>
+                    <div><button>Place Order</button></div>
+                </div>
+
+
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>
