@@ -1,3 +1,109 @@
+const patternInfo = {
+  "Hammer (Bullish)": {
+    desc: "A Hammer appears after a downtrend. It has a small body and long lower wick → signals potential bullish reversal.",
+    icon: "🔨"
+  },
+  "Shooting Star (Bearish)": {
+    desc: "A Shooting Star appears after an uptrend. Small body with long upper wick → signals potential bearish reversal.",
+    icon: "⭐"
+  },
+  "Doji (Indecision)": {
+    desc: "A Doji forms when open and close are nearly equal. Indicates market indecision.",
+    icon: "➕"
+  },
+  "Bullish Engulfing": {
+    desc: "Green candle fully engulfs previous red candle → strong bullish reversal.",
+    icon: "📊"
+  },
+  "Bearish Engulfing": {
+    desc: "Red candle fully engulfs previous green candle → strong bearish reversal.",
+    icon: "📊"
+  },
+  "Morning Star (Bullish)": {
+    desc: "3-candle pattern: red → indecision → strong green → bullish reversal signal.",
+    icon: "⭐"
+  },
+  "Evening Star (Bearish)": {
+    desc: "3-candle pattern: green → indecision → strong red → bearish reversal signal.",
+    icon: "⭐"
+  },
+  "Three White Soldiers (Bullish)": {
+    desc: "Three consecutive strong green candles → bullish continuation signal.",
+    icon: "🪖"
+  },
+  "Three Black Crows (Bearish)": {
+    desc: "Three consecutive strong red candles → bearish continuation signal.",
+    icon: "🐦"
+  }
+};
+
+let patternChart = null;
+
+async function fetchCandlesForChart(symbol, interval = "5m", limit = 10) {
+  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  return data.map(c => ({
+    x: new Date(c[0]),
+    o: parseFloat(c[1]),
+    h: parseFloat(c[2]),
+    l: parseFloat(c[3]),
+    c: parseFloat(c[4])
+  }));
+}
+
+function getHighlightIndexes(pattern) {
+  if (pattern.includes("Engulfing")) return [8, 9];
+  if (pattern.includes("Star")) return [7, 8, 9];
+  if (pattern.includes("Crows") || pattern.includes("Soldiers")) return [7, 8, 9];
+  if (pattern.includes("Doji") || pattern.includes("Hammer")) return [9];
+  return [9];
+}
+
+async function showPatternChart(symbol, pattern) {
+  const candles = await fetchCandlesForChart(symbol, "5m", 10);
+  const highlights = getHighlightIndexes(pattern);
+
+  const ctx = document.getElementById("pattern-chart").getContext("2d");
+  if (patternChart) patternChart.destroy();
+
+  patternChart = new Chart(ctx, {
+    type: 'candlestick',
+    data: {
+      datasets: [{
+        label: `${symbol} Chart`,
+        data: candles,
+        color: {
+          up: '#26a69a',
+          down: '#ef5350',
+          unchanged: '#999'
+        }
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#ccc' } },
+        y: { ticks: { color: '#ccc' } }
+      },
+      animation: {
+        duration: 0
+      }
+    }
+  });
+
+  // Highlight with glow effect
+  highlights.forEach(i => {
+    const candle = candles[i];
+    if (candle) {
+      const glow = ctx.createRadialGradient(175, 100, 20, 175, 100, 120);
+      glow.addColorStop(0, "rgba(255, 215, 0, 0.5)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+    }
+  });
+}
+
 class AdvancedCryptoTradingAdvisor {
   constructor() {
     this.coins = [];
@@ -413,12 +519,15 @@ class AdvancedCryptoTradingAdvisor {
 
   async fetchFundingRate(symbol) {
   try {
+    // Binance Futures only works if pair exists there
     const res = await fetch(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${symbol}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      // Fail safe for non-futures pairs (like XNOUSDT)
+      return { lastFundingRate: "0.0000", markPrice: "0" };
+    }
     return await res.json();
   } catch (e) {
     console.warn(`Funding API error for ${symbol}:`, e.message);
-    // Fail-safe → return neutral funding
     return { lastFundingRate: "0.0000", markPrice: "0" };
   }
 }
@@ -428,11 +537,16 @@ async fetchOpenInterest(symbol) {
     const res = await fetch(
       `https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=5m&limit=2`
     );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      // Fail safe if no futures market
+      return [
+        { sumOpenInterest: "0" },
+        { sumOpenInterest: "0" }
+      ];
+    }
     return await res.json();
   } catch (e) {
     console.warn(`Open Interest API error for ${symbol}:`, e.message);
-    // Fail-safe → return stable OI (no crash)
     return [
       { sumOpenInterest: "0" },
       { sumOpenInterest: "0" }
@@ -670,7 +784,7 @@ async fetchOpenInterest(symbol) {
       signals.push("OI Stable/Decreasing");
     }
 
-    const recommendation = this.generateRecommendation(
+        const baseRec = this.generateRecommendation(
       confidence,
       currentPrice,
       support,
@@ -680,31 +794,197 @@ async fetchOpenInterest(symbol) {
       isHighConviction
     );
 
+    // Get price/volume changes for overrides
+    const priceChangePct = ((processedData[processedData.length-1].close -
+                            processedData[processedData.length-4].close) /
+                            processedData[processedData.length-4].close) * 100;
+    const volumeSpike = volumeRatio > 5;
+    const whaleData = { buyDetected: false, sellDetected: false }; // placeholder until whale API
+
+    // Final decision
+    const finalSignal = this.getFinalSignal(baseRec.positionType, {
+      priceChangePct,
+      volumeSpike,
+      sellVolumeSpike: false // later refine
+    }, whaleData);
+
+    // Detect candlestick patterns
+    const patterns = this.detectCandlestickPatterns(processedData);
+
     return {
       currentPrice,
       quoteVolume: currentQuoteVolume,
-     indicators: {
-      trend,
-      mfi: mfi.toFixed(2),
-      cmf: cmf.toFixed(3),
-      volumeRatio: volumeRatio.toFixed(2),
-      vwma20: this.formatPrice(vwma20[vwma20.length-1] || 0),
-      vwma50: this.formatPrice(vwma50[vwma50.length-1] || 0),
-      atr: this.formatPrice(atr),
-      support: this.formatPrice(support),
-      resistance: this.formatPrice(resistance),
-      fundingRate: this.formatPrice(fundingRate * 100) + "%",   // ✅ fixed
-      oiChange: oiChange.toFixed(2)
-  },
+      indicators: {
+        trend,
+        mfi: mfi.toFixed(2),
+        cmf: cmf.toFixed(3),
+        volumeRatio: volumeRatio.toFixed(2),
+        vwma20: this.formatPrice(vwma20[vwma20.length-1] || 0),
+        vwma50: this.formatPrice(vwma50[vwma50.length-1] || 0),
+        atr: this.formatPrice(atr),
+        support: this.formatPrice(support),
+        resistance: this.formatPrice(resistance),
+        fundingRate: this.formatPrice(fundingRate * 100) + "%",
+        oiChange: oiChange.toFixed(2)
+      },
       signals,
-      recommendation,
+      recommendation: baseRec,
+      finalSignal,
+      patterns,
       isHighConviction
     };
   } catch (error) {
     console.error(`Error generating signals for ${coin.name}:`, error);
     return { error: error.message };
   }
+ }
+
+ // === Final Signal Pipeline ===
+getFinalSignal(baseSignal, marketData, whaleData) {
+  let signal = baseSignal;  
+  let overrideReason = null;  
+  let confidence = baseSignal === "BUY" ? 1 : baseSignal === "SELL" ? -1 : 0;
+
+  // ✅ Momentum Override (stricter)
+if (signal === "SELL" && marketData.priceChangePct > 3) {
+  signal = "HOLD";
+  overrideReason = "Pump detected (Price ↑)";
+  confidence = Math.max(confidence, 0);
+} else if (signal === "BUY" && marketData.priceChangePct < -3) {
+  signal = "HOLD";
+  overrideReason = "Dump detected (Price ↓)";
+  confidence = Math.min(confidence, 0);
 }
+
+// ✅ Volume Override (refined — only fires if conflict)
+if (signal === "SELL" && marketData.volumeSpike) {
+  signal = "HOLD";
+  overrideReason = "Conflict: High Volume vs SELL signal";
+  confidence = Math.max(confidence, 0);
+} else if (signal === "BUY" && marketData.sellVolumeSpike) {
+  signal = "HOLD";
+  overrideReason = "Conflict: Heavy Sell-Side Volume vs BUY signal";
+  confidence = Math.min(confidence, 0);
+}
+
+  // ✅ Whale Override
+  if (whaleData.buyDetected) {
+    if (signal === "SELL") signal = "HOLD";
+    else if (signal === "HOLD") signal = "BUY";
+    overrideReason = "Whale Buy Detected";
+    confidence += 1;
+  } else if (whaleData.sellDetected) {
+    if (signal === "BUY") signal = "HOLD";
+    else if (signal === "HOLD") signal = "SELL";
+    overrideReason = "Whale Sell Detected";
+    confidence -= 1;
+  }
+
+  // ✅ Cap confidence
+  confidence = Math.max(-2, Math.min(2, confidence));
+
+  return { signal, confidence, overrideReason };
+ }
+
+ // === Detect Major Candlestick Patterns ===
+detectCandlestickPatterns(data) {
+  if (!data || data.length < 3) return [];
+
+  const patterns = [];
+  const last = data[data.length - 1];
+  const prev = data[data.length - 2];
+  const prev2 = data[data.length - 3];
+
+  const body = Math.abs(last.close - last.open);
+  const upperWick = last.high - Math.max(last.close, last.open);
+  const lowerWick = Math.min(last.close, last.open) - last.low;
+  const candleRange = last.high - last.low;
+
+  // -------------------------
+  // 🔹 Single-Candle Patterns
+  // -------------------------
+
+  // Hammer (Bullish) - long lower wick, small body on top
+  if (lowerWick > 2 * body && last.close > last.open) {
+    patterns.push("Hammer 🟢");
+  }
+
+  // Inverted Hammer (Bullish) - long upper wick, small body at bottom
+  if (upperWick > 2 * body && last.close > last.open) {
+    patterns.push("Inverted Hammer 🟢");
+  }
+
+  // Shooting Star (Bearish) - long upper wick, small body at bottom (but close lower)
+  if (upperWick > 2 * body && last.close < last.open) {
+    patterns.push("Shooting Star 🔴");
+  }
+
+  // Doji (Indecision) - open ≈ close
+  if (Math.abs(last.close - last.open) <= candleRange * 0.1) {
+    patterns.push("Doji ⚪");
+  }
+
+  // Spinning Top (Indecision but with wicks both sides)
+  if (body <= candleRange * 0.3 && upperWick > body && lowerWick > body) {
+    patterns.push("Spinning Top ⚪");
+  }
+
+  // -------------------------
+  // 🔹 Dual-Candle Patterns
+  // -------------------------
+
+  // Bullish Engulfing
+  if (last.close > last.open && prev.close < prev.open &&
+      last.close > prev.open && last.open < prev.close) {
+    patterns.push("Bullish Engulfing 🟢");
+  }
+
+  // Bearish Engulfing
+  if (last.close < last.open && prev.close > prev.open &&
+      last.open > prev.close && last.close < prev.open) {
+    patterns.push("Bearish Engulfing 🔴");
+  }
+
+  // Piercing Line (Bullish) - gap down then strong bullish close > mid of prev
+  if (prev.close < prev.open && last.open < prev.low && last.close > (prev.open + prev.close) / 2) {
+    patterns.push("Piercing Line 🟢");
+  }
+
+  // Dark Cloud Cover (Bearish) - gap up then bearish close < mid of prev
+  if (prev.close > prev.open && last.open > prev.high && last.close < (prev.open + prev.close) / 2) {
+    patterns.push("Dark Cloud Cover 🔴");
+  }
+
+  // -------------------------
+  // 🔹 Triple-Candle Patterns
+  // -------------------------
+
+  // Morning Star (Bullish) - downtrend, small body, then strong bullish
+  if (prev2.close < prev2.open && Math.abs(prev.close - prev.open) <= candleRange * 0.3 &&
+      last.close > (prev2.open + prev2.close) / 2) {
+    patterns.push("Morning Star ⭐🟢");
+  }
+
+  // Evening Star (Bearish) - uptrend, small body, then strong bearish
+  if (prev2.close > prev2.open && Math.abs(prev.close - prev.open) <= candleRange * 0.3 &&
+      last.close < (prev2.open + prev2.close) / 2) {
+    patterns.push("Evening Star ⭐🔴");
+  }
+
+  // Three White Soldiers (Bullish continuation)
+  if (last.close > last.open && prev.close > prev.open && prev2.close > prev2.open &&
+      last.close > prev.close && prev.close > prev2.close) {
+    patterns.push("Three White Soldiers 🟢");
+  }
+
+  // Three Black Crows (Bearish continuation)
+  if (last.close < last.open && prev.close < prev.open && prev2.close < prev2.open &&
+      last.close < prev.close && prev.close < prev2.close) {
+    patterns.push("Three Black Crows 🔴");
+  }
+
+  return patterns;
+ }
 
   generateRecommendation(confidence, price, support, resistance, atr, trend, isHighConviction) {
   const positionType =
@@ -770,6 +1050,43 @@ async fetchOpenInterest(symbol) {
       coinElement.querySelector('.stop-loss .value').textContent = this.formatPrice(rec.stopLoss);
       coinElement.querySelector('.take-profit .value').textContent = this.formatPrice(rec.takeProfit);
       coinElement.querySelector('.risk-reward .value').textContent = rec.riskRewardRatio;
+
+      // === Override & Pattern Display ===
+  if (analysis.finalSignal) {
+  const { signal, confidence, overrideReason } = analysis.finalSignal;
+
+  // Update recommendation UI
+  const posEl = coinElement.querySelector('.position-type .value');
+  posEl.textContent = signal;
+  posEl.parentElement.className = 'position-type ' + 
+    (signal === 'BUY' ? 'buy-signal' : signal === 'SELL' ? 'sell-signal' : 'hold-signal');
+
+  // Show override warning
+  if (overrideReason) {
+    let warnEl = coinElement.querySelector('.override-warning');
+    if (!warnEl) {
+      warnEl = document.createElement('div');
+      warnEl.className = 'override-warning';
+      coinElement.querySelector('.coin-data').appendChild(warnEl);
+    }
+    warnEl.textContent = `⚠️ Overridden: ${overrideReason}`;
+    warnEl.style.color = "#ffc107";
+  }
+
+  // Show confidence
+  coinElement.querySelector('.confidence .value').textContent = confidence;
+
+  // Show detected candlestick patterns
+  const patternTags = analysis.patterns || [];
+  const signalsList = coinElement.querySelector('.signals-list');
+  if (signalsList) {
+    patternTags.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = `🕯️ ${p}`;
+      signalsList.appendChild(li);
+    });
+  }
+}
 
         // === ✅ New: Funding + OI + Squeeze ===
       coinElement.querySelector('.funding-rate .value').textContent = analysis.indicators.fundingRate;
@@ -940,3 +1257,32 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("status").style.color = "#f44336";
   }
 });
+
+function updatePatternsUI(patterns, symbol) {
+  const patternsBox = document.getElementById("patterns");
+  patternsBox.innerHTML = "";
+
+  patterns.forEach(p => {
+    let type = "neutral";
+    if (p.includes("Bullish")) type = "bullish";
+    if (p.includes("Bearish")) type = "bearish";
+
+    const tag = document.createElement("div");
+    tag.className = `pattern-tag ${type}`;
+    tag.innerHTML = `${patternInfo[p]?.icon || "🕯️"} ${p}`;
+
+    // On click → open modal with details + chart
+    tag.onclick = async () => {
+      document.getElementById("pattern-title").innerText = p;
+      document.getElementById("pattern-desc").innerText = patternInfo[p]?.desc || "No description available.";
+      document.getElementById("pattern-modal").style.display = "block";
+      await showPatternChart(symbol, p);
+    };
+
+    patternsBox.appendChild(tag);
+  });
+}
+
+document.getElementById("close-modal").onclick = () => {
+  document.getElementById("pattern-modal").style.display = "none";
+};
