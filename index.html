@@ -37,51 +37,58 @@
       <h3>⚠️ Risk Disclaimer</h3>
       <p>This application is for educational purposes only. Trading cryptocurrencies carries substantial risk. The $10 with 20x leverage simulation shows how small price movements can significantly impact your position. Never risk more than 1-2% of your capital per trade. The creator is not responsible for any trading losses.</p>
     </div>
-    
     <template id="coin-template">
-      <div class="coin">
-        <div class="price-update">Last update: <span class="update-time">Just now</span></div>
-        <div class="coin-header">
-          <img class="coin-logo" alt="Coin Logo">
-          <h3 class="coin-name"></h3>
-          <button class="remove-coin">×</button>
+  <div class="coin">
+    <div class="price-update">Last update: <span class="update-time">Just now</span></div>
+    <div class="coin-header">
+      <img class="coin-logo" alt="Coin Logo">
+      <h3 class="coin-name"></h3>
+      <button class="remove-coin">×</button>
+    </div>
+    <div class="coin-data">
+      <div class="price">Price: $<span class="value">0.00</span></div>
+      <div class="trend">Trend: <span class="value">Loading...</span></div>
+      <div class="volume">24h Volume: $<span class="value">0.00M</span></div>
+      <div class="mfi">MFI: <span class="value">0.00</span></div>
+      <div class="cmf">CMF: <span class="value">0.000</span></div>
+      
+      <!-- ✅ NEW Metrics -->
+      <div class="funding-rate">Funding Rate: <span class="value">N/A</span></div>
+      <div class="oi-change">Open Interest Change: <span class="value">N/A</span></div>
+      <div class="squeeze-warning">Squeeze Status: <span class="value">N/A</span></div>
+      <!-- ✅ END -->
+
+      <div class="confidence">Conviction: <span class="value">0.00</span></div>
+      <div class="position-type">Recommendation: <span class="value">Loading...</span></div>
+      <div class="entry-price">Entry: <span class="value">N/A</span></div>
+      <div class="stop-loss">Stop Loss: <span class="value">N/A</span></div>
+      <div class="take-profit">Take Profit: <span class="value">N/A</span></div>
+      <div class="risk-reward">Risk/Reward: <span class="value">N/A</span></div>
+      
+      <div class="simulation">
+        <h4>$10 Position with 20x Leverage</h4>
+        <div class="simulation-row">
+          <span>Position Size:</span>
+          <span class="value">$200.00</span>
         </div>
-        <div class="coin-data">
-          <div class="price">Price: $<span class="value">0.00</span></div>
-          <div class="trend">Trend: <span class="value">Loading...</span></div>
-          <div class="volume">24h Volume: $<span class="value">0.00M</span></div>
-          <div class="mfi">MFI: <span class="value">0.00</span></div>
-          <div class="cmf">CMF: <span class="value">0.000</span></div>
-          <div class="confidence">Conviction: <span class="value">0.00</span></div>
-          <div class="position-type">Recommendation: <span class="value">Loading...</span></div>
-          <div class="entry-price">Entry: <span class="value">N/A</span></div>
-          <div class="stop-loss">Stop Loss: <span class="value">N/A</span></div>
-          <div class="take-profit">Take Profit: <span class="value">N/A</span></div>
-          <div class="risk-reward">Risk/Reward: <span class="value">N/A</span></div>
-          <div class="simulation">
-            <h4>$10 Position with 20x Leverage</h4>
-            <div class="simulation-row">
-              <span>Position Size:</span>
-              <span class="value">$200.00</span>
-            </div>
-            <div class="simulation-row">
-              <span>Current P&L:</span>
-              <span class="value pnl" id="current-pnl">$0.00</span>
-            </div>
-            <div class="simulation-row">
-              <span>Distance to TP:</span>
-              <span class="value" id="distance-tp">0.00%</span>
-            </div>
-            <div class="simulation-row">
-              <span>Distance to SL:</span>
-              <span class="value" id="distance-sl">0.00%</span>
-            </div>
-          </div>
-          <ul class="signals-list"></ul>
-          <div class="error"></div>
+        <div class="simulation-row">
+          <span>Current P&L:</span>
+          <span class="value pnl" id="current-pnl">$0.00</span>
+        </div>
+        <div class="simulation-row">
+          <span>Distance to TP:</span>
+          <span class="value" id="distance-tp">0.00%</span>
+        </div>
+        <div class="simulation-row">
+          <span>Distance to SL:</span>
+          <span class="value" id="distance-sl">0.00%</span>
         </div>
       </div>
-    </template>
+      <ul class="signals-list"></ul>
+      <div class="error"></div>
+    </div>
+  </div>
+</template>
 
     <template id="top-coin-template">
       <div class="top-coin">

@@ -12,7 +12,6 @@ class AdvancedCryptoTradingAdvisor {
       emaPeriods: [20, 50, 200],
       baseRiskReward: 2,
       highConvictionMultiplier: 1.5,
-      logoBaseUrl: 'https://cryptologos.cc/logos',
       fallbackLogo: 'https://cryptologos.cc/logos/default-fallback-logo.png',
       binanceApiUrl: 'https://api.binance.com/api/v3',
       wsUrl: 'wss://stream.binance.com:9443/ws',
@@ -37,6 +36,33 @@ class AdvancedCryptoTradingAdvisor {
       this.showStatus("❌ Initialization failed", "error");
     }
   }
+
+  // ✅ Add formatPrice here
+ formatPrice(price) {
+  const num = Number(price);
+  if (isNaN(num)) return "N/A";   // fallback if invalid
+
+  if (num >= 1) return num.toFixed(2);        // e.g. 1980.45
+  if (num >= 0.01) return num.toFixed(4);     // e.g. 0.0234
+  if (num >= 0.0001) return num.toFixed(6);   // e.g. 0.000245
+  return num.toFixed(8);                      // e.g. 0.00001130
+}
+
+  
+  async safeFetch(url, retries = 1) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    if (retries > 0) {
+      console.log("Retrying:", url);
+      return this.safeFetch(url, retries - 1);
+    }
+    console.warn("API failed:", url, err.message);
+    return null;
+  }
+}
 
   setupEventListeners() {
     document.getElementById("search-btn").addEventListener("click", () => this.addCoinByInput());
@@ -116,7 +142,8 @@ class AdvancedCryptoTradingAdvisor {
         coin.currentPrice = price;
         coin.lastUpdate = new Date();
         
-        coinElement.querySelector('.price .value').textContent = price.toFixed(4);
+         // ✅ dynamic decimal formatting
+  coinElement.querySelector('.price .value').textContent = this.formatPrice(price);
         
         const updateElement = coinElement.querySelector('.update-time');
         updateElement.textContent = 'Live';
@@ -384,6 +411,35 @@ class AdvancedCryptoTradingAdvisor {
     }
   }
 
+  async fetchFundingRate(symbol) {
+  try {
+    const res = await fetch(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${symbol}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.warn(`Funding API error for ${symbol}:`, e.message);
+    // Fail-safe → return neutral funding
+    return { lastFundingRate: "0.0000", markPrice: "0" };
+  }
+}
+
+async fetchOpenInterest(symbol) {
+  try {
+    const res = await fetch(
+      `https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=5m&limit=2`
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.warn(`Open Interest API error for ${symbol}:`, e.message);
+    // Fail-safe → return stable OI (no crash)
+    return [
+      { sumOpenInterest: "0" },
+      { sumOpenInterest: "0" }
+    ];
+  }
+}
+
   calculateVolumeWeightedSR(data) {
     const levels = [];
     for (let i = 2; i < data.length - 2; i++) {
@@ -496,164 +552,200 @@ class AdvancedCryptoTradingAdvisor {
   }
 
   async generateTradingSignals(coin) {
-    try {
-      const [marketData, ticker24h] = await Promise.all([
-        this.fetchMarketData(coin.symbol),
-        this.fetch24hTicker(coin.symbol)
-      ]);
-      
-      if (!marketData || !ticker24h) {
-        throw new Error('Failed to fetch required data');
-      }
+  try {
+    const [marketData, ticker24h, funding, oiData] = await Promise.all([
+      this.fetchMarketData(coin.symbol),
+      this.fetch24hTicker(coin.symbol),
+      this.fetchFundingRate(coin.symbol),
+      this.fetchOpenInterest(coin.symbol)
+    ]);
 
-      const processedData = marketData.map(d => ({
-        time: d[0],
-        open: parseFloat(d[1]),
-        high: parseFloat(d[2]),
-        low: parseFloat(d[3]),
-        close: parseFloat(d[4]),
-        volume: parseFloat(d[5]),
-        quoteVolume: parseFloat(d[7])
-      }));
+    if (!marketData || !ticker24h) throw new Error('Market data fetch failed');
 
-      const currentPrice = parseFloat(ticker24h.lastPrice);
-      const currentVolume = parseFloat(ticker24h.volume);
-      const currentQuoteVolume = parseFloat(ticker24h.quoteVolume);
-      const avgVolume = this.average(processedData.slice(-30).map(d => d.volume));
-      const volumeRatio = currentVolume / avgVolume;
-      const isHighConviction = volumeRatio > 1.5 && currentQuoteVolume > 1000000;
+    const processedData = marketData.map(d => ({
+      time: d[0],
+      open: parseFloat(d[1]),
+      high: parseFloat(d[2]),
+      low: parseFloat(d[3]),
+      close: parseFloat(d[4]),
+      volume: parseFloat(d[5]),
+      quoteVolume: parseFloat(d[7])
+    }));
 
-      const { support, resistance } = this.calculateVolumeWeightedSR(processedData);
-      const atr = this.calculateATR(processedData);
-      const vwma20 = this.calculateVWMA(processedData, 20);
-      const vwma50 = this.calculateVWMA(processedData, 50);
-      const mfi = this.calculateMFI(processedData, 14);
-      const cmf = this.calculateCMF(processedData, 20);
-      const trend = this.determineTrend(vwma20, vwma50, currentPrice);
+    const currentPrice = parseFloat(ticker24h.lastPrice);
+    const currentVolume = parseFloat(ticker24h.volume);
+    const currentQuoteVolume = parseFloat(ticker24h.quoteVolume);
+    const avgVolume = this.average(processedData.slice(-30).map(d => d.volume));
+    const volumeRatio = currentVolume / avgVolume;
+    const isHighConviction = volumeRatio > 1.5 && currentQuoteVolume > 1000000;
 
-      let confidence = 0;
-      const signals = [];
+    const { support, resistance } = this.calculateVolumeWeightedSR(processedData);
+    const atr = this.calculateATR(processedData);
+    const vwma20 = this.calculateVWMA(processedData, 20);
+    const vwma50 = this.calculateVWMA(processedData, 50);
+    const mfi = this.calculateMFI(processedData, 14);
+    const cmf = this.calculateCMF(processedData, 20);
+    const trend = this.determineTrend(vwma20, vwma50, currentPrice);
 
-      if (trend.includes("Uptrend")) {
-        confidence += isHighConviction ? 0.4 : 0.2;
-        signals.push(trend);
-        if (currentPrice > vwma20[vwma20.length-1]) {
-          confidence += 0.1;
-          signals.push("Price > VWMA20");
-        }
-      } else if (trend.includes("Downtrend")) {
-        confidence -= isHighConviction ? 0.4 : 0.2;
-        signals.push(trend);
-        if (currentPrice < vwma20[vwma20.length-1]) {
-          confidence -= 0.1;
-          signals.push("Price < VWMA20");
-        }
-      }
-
-      if (mfi > 80) {
-        confidence -= 0.3;
-        signals.push("Overbought (MFI)");
-      } else if (mfi < 20) {
-        confidence += isHighConviction ? 0.4 : 0.2;
-        signals.push("Oversold (MFI)");
-      }
-
-      if (cmf > 0.2) {
-        confidence += 0.25;
-        signals.push("Strong Money Inflow");
-      } else if (cmf < -0.2) {
-        confidence -= 0.25;
-        signals.push("Strong Money Outflow");
-      }
-
-      if (volumeRatio > 2) {
-        confidence += trend.includes("Uptrend") ? 0.3 : -0.3;
-        signals.push(`Volume Spike (${volumeRatio.toFixed(1)}x)`);
-      }
-
-      if (currentPrice <= support * 1.02 && currentPrice >= support * 0.98) {
-        confidence += 0.2;
-        signals.push("Near Support");
-      } else if (currentPrice <= resistance * 1.02 && currentPrice >= resistance * 0.98) {
-        confidence -= 0.2;
-        signals.push("Near Resistance");
-      }
-
-      const recommendation = this.generateRecommendation(
-        confidence, 
-        currentPrice, 
-        support, 
-        resistance, 
-        atr,
-        trend,
-        isHighConviction
-      );
-
-      return {
-        currentPrice,
-        quoteVolume: currentQuoteVolume,
-        indicators: {
-          trend,
-          mfi: mfi.toFixed(2),
-          cmf: cmf.toFixed(3),
-          volumeRatio: volumeRatio.toFixed(2),
-          vwma20: vwma20[vwma20.length-1]?.toFixed(4) || "N/A",
-          vwma50: vwma50[vwma50.length-1]?.toFixed(4) || "N/A",
-          atr: atr.toFixed(4),
-          support: support.toFixed(4),
-          resistance: resistance.toFixed(4)
-        },
-        signals,
-        recommendation,
-        isHighConviction
-      };
-
-    } catch (error) {
-      console.error(`Error generating signals for ${coin.name}:`, error);
-      return { error: error.message };
+    // Funding Rate & Open Interest (safe defaults)
+    let fundingRate = 0;
+    if (funding && funding.lastFundingRate) {
+      fundingRate = parseFloat(funding.lastFundingRate);
     }
-  }
 
-  generateRecommendation(confidence, price, support, resistance, atr, trend, isHighConviction) {
-    const positionType = 
-      confidence >= (isHighConviction ? 0.5 : 0.7) ? "BUY" :
-      confidence <= (isHighConviction ? -0.5 : -0.7) ? "SELL" : "HOLD";
-
-    let entryPrice, stopLoss, takeProfit, riskRewardRatio;
-
-    if (positionType === "BUY") {
-      entryPrice = price;
-      stopLoss = Math.min(
-        support,
-        price * 0.97,
-        price - (2 * atr)
-      );
-      takeProfit = entryPrice + (entryPrice - stopLoss) * 
-                 (isHighConviction ? this.config.baseRiskReward * this.config.highConvictionMultiplier : this.config.baseRiskReward);
-      riskRewardRatio = ((takeProfit - entryPrice) / (entryPrice - stopLoss)).toFixed(2);
-    } 
-    else if (positionType === "SELL") {
-      entryPrice = price;
-      stopLoss = Math.max(
-        resistance,
-        price * 1.03,
-        price + (2 * atr)
-      );
-      takeProfit = entryPrice - (stopLoss - entryPrice) * 
-                 (isHighConviction ? this.config.baseRiskReward * this.config.highConvictionMultiplier : this.config.baseRiskReward);
-      riskRewardRatio = ((entryPrice - takeProfit) / (stopLoss - entryPrice)).toFixed(2);
+    let oiChange = 0;
+    if (oiData && oiData.length >= 2) {
+      const latestOI = parseFloat(oiData[oiData.length - 1].sumOpenInterest);
+      const prevOI = parseFloat(oiData[oiData.length - 2].sumOpenInterest);
+      oiChange = latestOI - prevOI;
     }
+
+    let confidence = 0;
+    const signals = [];
+
+    if (trend.includes("Uptrend")) {
+      confidence += isHighConviction ? 0.4 : 0.2;
+      signals.push(trend);
+      if (currentPrice > vwma20[vwma20.length - 1]) {
+        confidence += 0.1;
+        signals.push("Price > VWMA20");
+      }
+    } else if (trend.includes("Downtrend")) {
+      confidence -= isHighConviction ? 0.4 : 0.2;
+      signals.push(trend);
+      if (currentPrice < vwma20[vwma20.length - 1]) {
+        confidence -= 0.1;
+        signals.push("Price < VWMA20");
+      }
+    }
+
+    if (mfi > 80) {
+      confidence -= 0.3;
+      signals.push("Overbought (MFI)");
+    } else if (mfi < 20) {
+      confidence += isHighConviction ? 0.4 : 0.2;
+      signals.push("Oversold (MFI)");
+    }
+
+    if (cmf > 0.2) {
+      confidence += 0.25;
+      signals.push("Strong Money Inflow");
+    } else if (cmf < -0.2) {
+      confidence -= 0.25;
+      signals.push("Strong Money Outflow");
+    }
+
+    if (volumeRatio > 2) {
+      confidence += trend.includes("Uptrend") ? 0.3 : -0.3;
+      signals.push(`Volume Spike (${volumeRatio.toFixed(1)}x)`);
+    }
+
+    if (currentPrice <= support * 1.02 && currentPrice >= support * 0.98) {
+      confidence += 0.2;
+      signals.push("Near Support");
+    } else if (currentPrice <= resistance * 1.02 && currentPrice >= resistance * 0.98) {
+      confidence -= 0.2;
+      signals.push("Near Resistance");
+    }
+
+    // Funding signals
+    if (fundingRate > 0.0005) {
+      confidence += 0.1;
+      signals.push("⚠️ Short Squeeze Risk (shorts overcrowded)");
+    } else if (fundingRate < -0.0005) {
+      confidence -= 0.1;
+      signals.push("⚠️ Long Squeeze Risk (longs overcrowded)");
+    } else {
+      signals.push("Funding Balanced");
+    }
+
+    // OI signals
+    if (oiChange > 0 && trend.includes("Uptrend")) {
+      confidence += 0.1;
+      signals.push("OI Rising with Uptrend (Bullish Conviction)");
+    } else if (oiChange > 0 && trend.includes("Downtrend")) {
+      confidence -= 0.1;
+      signals.push("OI Rising with Downtrend (Bearish Conviction)");
+    } else {
+      signals.push("OI Stable/Decreasing");
+    }
+
+    const recommendation = this.generateRecommendation(
+      confidence,
+      currentPrice,
+      support,
+      resistance,
+      atr,
+      trend,
+      isHighConviction
+    );
 
     return {
-      positionType,
-      entryPrice: entryPrice?.toFixed(4) || "N/A",
-      stopLoss: stopLoss?.toFixed(4) || "N/A",
-      takeProfit: takeProfit?.toFixed(4) || "N/A",
-      riskRewardRatio: riskRewardRatio || "N/A",
-      confidence: confidence.toFixed(2),
+      currentPrice,
+      quoteVolume: currentQuoteVolume,
+     indicators: {
+      trend,
+      mfi: mfi.toFixed(2),
+      cmf: cmf.toFixed(3),
+      volumeRatio: volumeRatio.toFixed(2),
+      vwma20: this.formatPrice(vwma20[vwma20.length-1] || 0),
+      vwma50: this.formatPrice(vwma50[vwma50.length-1] || 0),
+      atr: this.formatPrice(atr),
+      support: this.formatPrice(support),
+      resistance: this.formatPrice(resistance),
+      fundingRate: this.formatPrice(fundingRate * 100) + "%",   // ✅ fixed
+      oiChange: oiChange.toFixed(2)
+  },
+      signals,
+      recommendation,
       isHighConviction
     };
+  } catch (error) {
+    console.error(`Error generating signals for ${coin.name}:`, error);
+    return { error: error.message };
   }
+}
+
+  generateRecommendation(confidence, price, support, resistance, atr, trend, isHighConviction) {
+  const positionType =
+    confidence >= (isHighConviction ? 0.5 : 0.7) ? "BUY" :
+    confidence <= (isHighConviction ? -0.5 : -0.7) ? "SELL" : "HOLD";
+
+  let entryPrice, stopLoss, takeProfit, riskRewardRatio;
+
+  if (positionType === "BUY") {
+    entryPrice = price;
+    stopLoss = Math.min(
+      support,
+      price * 0.97,
+      price - (2 * atr)
+    );
+    takeProfit = entryPrice + (entryPrice - stopLoss) *
+               (isHighConviction ? this.config.baseRiskReward * this.config.highConvictionMultiplier : this.config.baseRiskReward);
+    riskRewardRatio = ((takeProfit - entryPrice) / (entryPrice - stopLoss)).toFixed(2);
+  } 
+  else if (positionType === "SELL") {
+    entryPrice = price;
+    stopLoss = Math.max(
+      resistance,
+      price * 1.03,
+      price + (2 * atr)
+    );
+    takeProfit = entryPrice - (stopLoss - entryPrice) *
+               (isHighConviction ? this.config.baseRiskReward * this.config.highConvictionMultiplier : this.config.baseRiskReward);
+    riskRewardRatio = ((entryPrice - takeProfit) / (stopLoss - entryPrice)).toFixed(2);
+  }
+
+  return {
+    positionType,
+    entryPrice: entryPrice ? this.formatPrice(entryPrice) : "N/A",
+    stopLoss: stopLoss ? this.formatPrice(stopLoss) : "N/A",
+    takeProfit: takeProfit ? this.formatPrice(takeProfit) : "N/A",
+    riskRewardRatio: riskRewardRatio || "N/A",
+    confidence: confidence.toFixed(2),
+    isHighConviction
+  };
+}
 
   async updateCoin(coin) {
     try {
@@ -665,7 +757,7 @@ class AdvancedCryptoTradingAdvisor {
       const coinElement = document.getElementById(coin.id);
       if (!coinElement) throw new Error(`Element for ${coin.id} not found`);
       
-      coinElement.querySelector('.price .value').textContent = analysis.currentPrice.toFixed(4);
+      coinElement.querySelector('.price .value').textContent = this.formatPrice(analysis.currentPrice);
       coinElement.querySelector('.volume .value').textContent = (analysis.quoteVolume / 1000000).toFixed(2) + 'M';
       coinElement.querySelector('.trend .value').textContent = analysis.indicators.trend;
       coinElement.querySelector('.mfi .value').textContent = analysis.indicators.mfi;
@@ -674,10 +766,27 @@ class AdvancedCryptoTradingAdvisor {
       const rec = analysis.recommendation;
       coinElement.querySelector('.confidence .value').textContent = rec.confidence;
       coinElement.querySelector('.position-type .value').textContent = rec.positionType;
-      coinElement.querySelector('.entry-price .value').textContent = rec.entryPrice;
-      coinElement.querySelector('.stop-loss .value').textContent = rec.stopLoss;
-      coinElement.querySelector('.take-profit .value').textContent = rec.takeProfit;
+      coinElement.querySelector('.entry-price .value').textContent = this.formatPrice(rec.entryPrice);
+      coinElement.querySelector('.stop-loss .value').textContent = this.formatPrice(rec.stopLoss);
+      coinElement.querySelector('.take-profit .value').textContent = this.formatPrice(rec.takeProfit);
       coinElement.querySelector('.risk-reward .value').textContent = rec.riskRewardRatio;
+
+        // === ✅ New: Funding + OI + Squeeze ===
+      coinElement.querySelector('.funding-rate .value').textContent = analysis.indicators.fundingRate;
+      coinElement.querySelector('.oi-change .value').textContent = analysis.indicators.oiChange;
+
+      const squeezeEl = coinElement.querySelector('.squeeze-warning .value');
+      const squeezeText = analysis.signals.find(s => s.includes("Squeeze")) || "Balanced";
+      squeezeEl.textContent = squeezeText;
+
+        // Color coding
+        if (squeezeText.includes("Short Squeeze")) {
+          squeezeEl.style.color = "#ff5252"; // red
+        } else if (squeezeText.includes("Long Squeeze")) {
+          squeezeEl.style.color = "#ff9800"; // orange
+      } else {
+        squeezeEl.style.color = "#4caf50"; // green
+      }
       
       coin.entryPrice = parseFloat(rec.entryPrice);
       coin.stopLoss = parseFloat(rec.stopLoss);
