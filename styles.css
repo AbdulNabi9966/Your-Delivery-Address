@@ -1,0 +1,383 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #1a1d26;
+  color: #e0e0e0;
+  margin: 0;
+  padding: 15px;
+  line-height: 1.4;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+h1 {
+  color: #4fc3f7;
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.search-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+#coin-search {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 5px;
+  border: 1px solid #3a3f4b;
+  background-color: #2a2e39;
+  color: white;
+  font-size: 0.9rem;
+}
+
+#search-btn {
+  padding: 8px 15px;
+  background-color: #4fc3f7;
+  color: #1a1d26;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+#search-btn:hover {
+  background-color: #3fb3e6;
+}
+
+#status, #last-update {
+  text-align: center;
+  margin: 8px 0;
+  padding: 8px;
+  background-color: #2a2e39;
+  border-radius: 5px;
+  font-size: 0.85rem;
+}
+
+.coin {
+  background-color: #2a2e39;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: visible;
+}
+
+.coin-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.coin-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 50%;
+  background-color: #3a3f4b;
+}
+
+.coin-name {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #ffffff;
+}
+
+.remove-coin {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #f44336;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+}
+
+.coin-data {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.coin-data > div {
+  display: block;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background-color: #3a3f4b;
+  border-radius: 4px;
+  min-height: 20px;
+}
+
+.value {
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.signals-list {
+  grid-column: span 2;
+  margin: 5px 0 0 0;
+  padding: 0;
+  list-style-type: none;
+  font-size: 0.75rem;
+}
+
+.signals-list li {
+  padding: 5px 8px;
+  margin-bottom: 3px;
+  background-color: #4a4f5b;
+  border-radius: 3px;
+}
+
+.position-type {
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.buy-signal {
+  color: #4caf50;
+}
+
+.sell-signal {
+  color: #f44336;
+}
+
+.hold-signal {
+  color: #ffc107;
+}
+
+.error {
+  color: #f44336;
+  grid-column: span 2;
+  text-align: center;
+  padding: 8px;
+  background-color: #3a1e1e;
+  border-radius: 4px;
+  display: none;
+  font-size: 0.8rem;
+  margin-top: 5px;
+}
+
+#dynamic-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.disclaimer {
+  background-color: #2a2e39;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 15px;
+  border-left: 3px solid #f44336;
+  font-size: 0.75rem;
+}
+
+.disclaimer h3 {
+  color: #f44336;
+  margin-top: 0;
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+}
+
+.simulation {
+  grid-column: span 2;
+  background-color: #3a3f4b;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 5px;
+  font-size: 0.75rem;
+}
+
+.simulation h4 {
+  margin-top: 0;
+  margin-bottom: 6px;
+  color: #4fc3f7;
+  font-size: 0.8rem;
+}
+
+.simulation-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.price-update {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.65rem;
+  color: #888;
+  background-color: rgba(42, 46, 57, 0.9);
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.price-update.live {
+  color: #4caf50;
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.high-conviction {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(79, 195, 247, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(79, 195, 247, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 195, 247, 0); }
+}
+
+.pnl {
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+
+.pnl.positive {
+  color: #4caf50;
+}
+
+.pnl.negative {
+  color: #f44336;
+}
+
+.top-coins {
+  background-color: #2a2e39;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.top-coins h2 {
+  color: #4fc3f7;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.top-coins-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.top-coin {
+  background-color: #3a3f4b;
+  padding: 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.top-coin:hover {
+  background-color: #4a4f5b;
+}
+
+.top-coin-name {
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.top-coin-confidence {
+  color: #4fc3f7;
+  font-size: 0.85rem;
+}
+
+.top-coin-recommendation {
+  font-size: 0.8rem;
+  margin-top: 3px;
+}
+
+.buy-recommendation {
+  color: #4caf50;
+}
+
+.sell-recommendation {
+  color: #f44336;
+}
+
+#scan-progress {
+  height: 4px;
+  background-color: #3a3f4b;
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background-color: #4fc3f7;
+  transition: width 0.3s;
+}
+
+#scan-status {
+  font-size: 0.8rem;
+  margin-top: 5px;
+  color: #888;
+}
+
+.scan-controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.scan-btn {
+  padding: 6px 12px;
+  background-color: #4fc3f7;
+  color: #1a1d26;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+
+.scan-btn:hover {
+  background-color: #3fb3e6;
+}
+
+.scan-btn.stop {
+  background-color: #f44336;
+}
+
+.scan-btn.stop:hover {
+  background-color: #e53935;
+}
+
+@media (max-width: 500px) {
+  .coin-data {
+    grid-template-columns: 1fr;
+  }
+  
+  .signals-list, .simulation {
+    grid-column: span 1;
+  }
+  
+  .coin {
+    padding: 12px;
+  }
+  
+  h1 {
+    font-size: 1.3rem;
+  }
+  
+  .top-coins-list {
+    grid-template-columns: 1fr;
+  }
+}

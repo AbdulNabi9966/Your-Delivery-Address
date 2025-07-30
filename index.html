@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crypto Trading Stimulator and Advisor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Crypto Trading Advisor</h1>
+    
+    <div class="search-container">
+      <input type="text" id="coin-search" placeholder="Enter coin symbol (e.g. BTC, ETH)" autocomplete="off">
+      <button id="search-btn">Analyze</button>
+    </div>
+    
+    <div id="status">Ready - Enter a coin symbol to analyze</div>
+    <div id="last-update"></div>
+
+    <div class="top-coins">
+      <h2>Top Trading Opportunities (USDT Pairs)</h2>
+      <div class="scan-controls">
+        <button id="start-scan" class="scan-btn">Start Auto Scan</button>
+        <button id="stop-scan" class="scan-btn stop">Stop Scan</button>
+      </div>
+      <div id="scan-progress">
+        <div id="progress-bar"></div>
+      </div>
+      <div id="scan-status">Not scanning</div>
+      <div class="top-coins-list" id="top-coins-list"></div>
+    </div>
+    
+    <div id="dynamic-results"></div>
+    
+    <div class="disclaimer">
+      <h3>⚠️ Risk Disclaimer</h3>
+      <p>This application is for educational purposes only. Trading cryptocurrencies carries substantial risk. The $10 with 20x leverage simulation shows how small price movements can significantly impact your position. Never risk more than 1-2% of your capital per trade. The creator is not responsible for any trading losses.</p>
+    </div>
+    
+    <template id="coin-template">
+      <div class="coin">
+        <div class="price-update">Last update: <span class="update-time">Just now</span></div>
+        <div class="coin-header">
+          <img class="coin-logo" alt="Coin Logo">
+          <h3 class="coin-name"></h3>
+          <button class="remove-coin">×</button>
+        </div>
+        <div class="coin-data">
+          <div class="price">Price: $<span class="value">0.00</span></div>
+          <div class="trend">Trend: <span class="value">Loading...</span></div>
+          <div class="volume">24h Volume: $<span class="value">0.00M</span></div>
+          <div class="mfi">MFI: <span class="value">0.00</span></div>
+          <div class="cmf">CMF: <span class="value">0.000</span></div>
+          <div class="confidence">Conviction: <span class="value">0.00</span></div>
+          <div class="position-type">Recommendation: <span class="value">Loading...</span></div>
+          <div class="entry-price">Entry: <span class="value">N/A</span></div>
+          <div class="stop-loss">Stop Loss: <span class="value">N/A</span></div>
+          <div class="take-profit">Take Profit: <span class="value">N/A</span></div>
+          <div class="risk-reward">Risk/Reward: <span class="value">N/A</span></div>
+          <div class="simulation">
+            <h4>$10 Position with 20x Leverage</h4>
+            <div class="simulation-row">
+              <span>Position Size:</span>
+              <span class="value">$200.00</span>
+            </div>
+            <div class="simulation-row">
+              <span>Current P&L:</span>
+              <span class="value pnl" id="current-pnl">$0.00</span>
+            </div>
+            <div class="simulation-row">
+              <span>Distance to TP:</span>
+              <span class="value" id="distance-tp">0.00%</span>
+            </div>
+            <div class="simulation-row">
+              <span>Distance to SL:</span>
+              <span class="value" id="distance-sl">0.00%</span>
+            </div>
+          </div>
+          <ul class="signals-list"></ul>
+          <div class="error"></div>
+        </div>
+      </div>
+    </template>
+
+    <template id="top-coin-template">
+      <div class="top-coin">
+        <div class="top-coin-name"></div>
+        <div class="top-coin-confidence">Confidence: <span class="value">0.00</span></div>
+        <div class="top-coin-recommendation">Recommendation: <span class="value">-</span></div>
+      </div>
+    </template>
+  </div>
+
+  <div style="position: absolute; z-index: 99999">
+      <input autocomplete="off" type="checkbox" id="aadsstickymdjzfx8f" hidden />
+      <div style="padding-top: 0; padding-bottom: auto;">
+        <div style="width:100%;height:auto;position:fixed;text-align:center;font-size:0;bottom:0;left:0;right:0;margin:auto">
+          <label for="aadsstickymdjzfx8f" style="top: 50%;transform: translateY(-50%);right:24px;; position: absolute;border-radius: 4px; background: rgba(248, 248, 249, 0.70); padding: 4px;z-index: 99999;cursor:pointer">
+            <svg fill="#000000" height="16px" width="16px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 490">
+              <polygon points="456.851,0 245,212.564 33.149,0 0.708,32.337 212.669,245.004 0.708,457.678 33.149,490 245,277.443 456.851,490 489.292,457.678 277.331,245.004 489.292,32.337 "/>
+            </svg>
+          </label>
+          <div id="frame" style="width: 100%;margin: auto;background: rgba(0, 0, 0, 0.50);position: relative; z-index: 99998;"><iframe data-aa=2404507 src=//acceptable.a-ads.com/2404507/?size=Adaptive style='border:0; padding:0; width:70%; height:auto; overflow:hidden; margin: auto'></iframe></div>
+        </div>
+        <style>
+      #aadsstickymdjzfx8f:checked + div {
+        display: none;
+      }
+    </style>
+    </div></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
